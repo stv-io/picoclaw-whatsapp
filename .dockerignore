@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Development
+Makefile
+*.log
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Test files
+test/
+tests/
+*_test.go
+
+# Node modules (if any)
+node_modules/
+
+# Build artifacts
+build/
+dist/
+target/
+
+# Cache
+.cache/
+*.cache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Local workspace
+workspace/
