@@ -1,0 +1,41 @@
+name: Updatecli
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every Monday at 09:00 UTC
+    - cron: "0 9 * * 1"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'updatecli.yaml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  updatecli:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_USERNAME: "updatecli-bot"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Updatecli
+        uses: updatecli/updatecli-action@v2
+
+      - name: Run Updatecli in Dry Run mode
+        run: updatecli diff --config updatecli.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Updatecli in Apply mode
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: updatecli apply --config updatecli.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
