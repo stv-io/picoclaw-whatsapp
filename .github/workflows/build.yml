@@ -9,7 +9,7 @@ on:
     branches: [ main, master ]
 
 env:
-  # Use Docker Hub for now, can be switched to GHCR
+  # Use GitHub Container Registry
   REGISTRY: ghcr.io
   IMAGE_NAME: picoclaw-whatsapp
 
@@ -95,7 +95,7 @@ jobs:
         output-file: sbom.spdx.json
 
     - name: Upload SBOM
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: github.event_name != 'pull_request'
       with:
         name: sbom
