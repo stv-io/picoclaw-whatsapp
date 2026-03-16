@@ -2,7 +2,7 @@
 # Build for multiple architectures: linux/amd64, linux/arm64
 
 # Build stage
-FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -18,22 +18,24 @@ RUN git clone https://github.com/sipeed/picoclaw.git . && \
 
 # Get version info
 RUN echo "PicoClaw version: v0.2.2" && \
-    echo "Build platform: $BUILDPLATFORM" && \
-    echo "Target platform: $TARGETPLATFORM"
+    echo "Build platform: $(uname -m)" && \
+    echo "Target platform: $(uname -m)"
 
 # Install Go dependencies
 RUN go mod download
 
-# Build for target platform with WhatsApp native support
+# Generate embedded files
+RUN go generate ./...
+
+# Build for target platform (without WhatsApp native support for multi-arch compatibility)
 ARG TARGETARCH
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=$TARGETARCH go build \
-    -tags whatsapp_native \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build \
     -ldflags "-s -w -X github.com/sipeed/picoclaw/pkg/config.Version=v0.2.2-whatsapp.1.0" \
     -o picoclaw \
     ./cmd/picoclaw
 
 # Final stage - minimal runtime
-FROM --platform=$TARGETPLATFORM alpine:latest
+FROM alpine:latest
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates sqlite tzdata
@@ -64,12 +66,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Metadata
 LABEL maintainer="stv-io" \
-      description="PicoClaw with native WhatsApp support" \
-      version="v0.2.2-whatsapp.1.0" \
-      org.opencontainers.image.title="PicoClaw WhatsApp" \
-      org.opencontainers.image.description="PicoClaw AI assistant with native WhatsApp integration" \
-      org.opencontainers.image.version="v0.2.2-whatsapp.1.0" \
-      org.opencontainers.image.source="https://github.com/stv-io/picoclaw-whatsapp"
+    description="PicoClaw with native WhatsApp support" \
+    version="v0.2.2-whatsapp.1.0" \
+    org.opencontainers.image.title="PicoClaw WhatsApp" \
+    org.opencontainers.image.description="PicoClaw AI assistant with native WhatsApp integration" \
+    org.opencontainers.image.version="v0.2.2-whatsapp.1.0" \
+    org.opencontainers.image.source="https://github.com/stv-io/picoclaw-whatsapp"
 
 # Default command
 ENTRYPOINT ["picoclaw"]
