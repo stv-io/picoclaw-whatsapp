@@ -16,8 +16,8 @@ Images are versioned using the format: `{picoclaw-version}-whatsapp.{whatsapp-to
 
 ## Features
 
-- ✅ Native WhatsApp integration (no external bridge needed)
 - ✅ Multi-architecture support (linux/amd64, linux/arm64)
+- ✅ Native WhatsApp integration (single-arch builds)
 - ✅ Automated builds via GitHub Actions
 - ✅ SBOM generation for security
 - ✅ Health checks and monitoring
@@ -27,12 +27,19 @@ Images are versioned using the format: `{picoclaw-version}-whatsapp.{whatsapp-to
 
 ### Docker Pull
 
+#### Multi-Architecture (Recommended for general use)
 ```bash
-docker pull ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0
+docker pull ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-multi-arch
+```
+
+#### Native WhatsApp Integration (Single arch, WhatsApp native support)
+```bash
+docker pull ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-native
 ```
 
 ### Kubernetes Deployment
 
+#### Multi-Architecture
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -43,7 +50,33 @@ spec:
     spec:
       containers:
       - name: picoclaw
-        image: ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0
+        image: ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-multi-arch
+        ports:
+        - containerPort: 18790
+        env:
+        - name: PICOCLAW_GATEWAY_HOST
+          value: "0.0.0.0"
+        volumeMounts:
+        - name: workspace
+          mountPath: /root/.picoclaw/workspace
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: picoclaw-workspace
+```
+
+#### Native WhatsApp Integration
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: picoclaw-gateway-native
+spec:
+  template:
+    spec:
+      containers:
+      - name: picoclaw
+        image: ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-native
         ports:
         - containerPort: 18790
         env:
@@ -60,8 +93,36 @@ spec:
 
 ### Configuration
 
-Create a `config.json` with WhatsApp native support:
+Create a `config.json` with WhatsApp support:
 
+#### For Multi-Architecture (using WhatsApp bridge)
+```json
+{
+  "model_list": [
+    {
+      "model_name": "gemini-3.1-pro",
+      "model": "openai/gemini-3.1-pro-preview",
+      "api_key": "your-api-key",
+      "api_base": "https://generativelanguage.googleapis.com/v1beta/openai/"
+    }
+  ],
+  "agents": {
+    "defaults": {
+      "model": "gemini-3.1-pro"
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "use_native": false,
+      "session_store_path": "",
+      "allow_from": []
+    }
+  }
+}
+```
+
+#### For Native WhatsApp Integration
 ```json
 {
   "model_list": [
@@ -113,16 +174,26 @@ Create a `config.json` with WhatsApp native support:
 
 ### Local Build
 
+#### Multi-Architecture Build
 ```bash
 # Clone the repository
 git clone https://github.com/stv-io/picoclaw-whatsapp.git
 cd picoclaw-whatsapp
 
 # Build for current platform
-docker build -t picoclaw-whatsapp .
+make build-local
 
-# Build multi-arch
-docker buildx build --platform linux/amd64,linux/arm64 -t picoclaw-whatsapp .
+# Build multi-arch and push
+make build-multi-arch
+```
+
+#### Native WhatsApp Build
+```bash
+# Build with WhatsApp native support (single arch)
+make build-native
+
+# Test the native build
+make test-native
 ```
 
 ### Automated Build
@@ -137,9 +208,15 @@ git push origin v0.2.2-whatsapp.1.0
 
 ## Image Tags
 
-- `v0.2.2-whatsapp.1.0` - Versioned release
-- `latest` - Latest main branch build
-- `main-YYYYMMDD-HHmmss` - Timestamped builds from main branch
+### Multi-Architecture Images
+- `v0.2.2-whatsapp.1.0-multi-arch` - Versioned release (multi-arch)
+- `latest-multi-arch` - Latest main branch build (multi-arch)
+- `main-YYYYMMDD-HHmmss-multi-arch` - Timestamped builds from main branch (multi-arch)
+
+### Native WhatsApp Images
+- `v0.2.2-whatsapp.1.0-native` - Versioned release (native, single arch)
+- `latest-native` - Latest main branch build (native, single arch)
+- `main-YYYYMMDD-HHmmss-native` - Timestamped builds from main branch (native, single arch)
 
 ## Security
 

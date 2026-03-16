@@ -1,4 +1,4 @@
-name: Build and Push Multi-Arch Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
   IMAGE_NAME: picoclaw-whatsapp
 
 jobs:
-  build:
+  build-multi-arch:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,12 +43,12 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch,suffix=-{{date 'YYYYMMDD-HHmmss'}}
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=ref,event=branch,suffix=-multi-arch-{{date 'YYYYMMDD-HHmmss'}}
+          type=ref,event=pr,suffix=-multi-arch
+          type=semver,pattern={{version}},suffix=-multi-arch
+          type=semver,pattern={{major}}.{{minor}},suffix=-multi-arch
+          type=semver,pattern={{major}},suffix=-multi-arch
+          type=raw,value=latest-multi-arch,enable={{is_default_branch}}
 
     - name: Determine version
       id: version
@@ -68,19 +68,19 @@ jobs:
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
         echo "Build version: ${VERSION}"
 
-    - name: Build and push Docker image
+    - name: Build and push multi-arch Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-multi-arch
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-multi-arch
         labels: |
           maintainer=stv-io
-          org.opencontainers.image.title=PicoClaw WhatsApp
-          org.opencontainers.image.description=PicoClaw AI assistant with native WhatsApp integration
+          org.opencontainers.image.title=PicoClaw WhatsApp Multi-Arch
+          org.opencontainers.image.description=PicoClaw AI assistant (multi-arch, no WhatsApp native)
           org.opencontainers.image.version=${{ steps.version.outputs.version }}
           org.opencontainers.image.source=https://github.com/stv-io/picoclaw-whatsapp
         cache-from: type=gha
@@ -90,13 +90,101 @@ jobs:
       uses: anchore/sbom-action@v0
       if: github.event_name != 'pull_request'
       with:
-        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-multi-arch
         format: spdx-json
-        output-file: sbom.spdx.json
+        output-file: sbom-multi-arch.spdx.json
 
     - name: Upload SBOM
       uses: actions/upload-artifact@v4
       if: github.event_name != 'pull_request'
       with:
-        name: sbom
-        path: sbom.spdx.json
+        name: sbom-multi-arch
+        path: sbom-multi-arch.spdx.json
+
+  build-native:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta-native
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch,suffix=-native-{{date 'YYYYMMDD-HHmmss'}}
+          type=ref,event=pr,suffix=-native
+          type=semver,pattern={{version}},suffix=-native
+          type=semver,pattern={{major}}.{{minor}},suffix=-native
+          type=semver,pattern={{major}},suffix=-native
+          type=raw,value=latest-native,enable={{is_default_branch}}
+
+    - name: Determine version
+      id: version-native
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          # Get PicoClaw version from source
+          PICOCLAW_VERSION=$(grep -o 'checkout v[0-9.]*' Dockerfile.native | sed 's/checkout v//')
+          # Get WhatsApp version from our tagging
+          WHATSAPP_VERSION="1.0"
+          VERSION="${PICOCLAW_VERSION}-whatsapp.${WHATSAPP_VERSION}"
+          # Add commit SHA for non-tagged builds
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          VERSION="${VERSION}-${COMMIT_SHA}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Build version: ${VERSION}"
+
+    - name: Build and push native Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.native
+        platforms: linux/amd64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version-native.outputs.version }}-native
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-native
+        labels: |
+          maintainer=stv-io
+          org.opencontainers.image.title=PicoClaw WhatsApp Native
+          org.opencontainers.image.description=PicoClaw AI assistant with native WhatsApp integration
+          org.opencontainers.image.version=${{ steps.version-native.outputs.version }}
+          org.opencontainers.image.source=https://github.com/stv-io/picoclaw-whatsapp
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Generate SBOM
+      uses: anchore/sbom-action@v0
+      if: github.event_name != 'pull_request'
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version-native.outputs.version }}-native
+        format: spdx-json
+        output-file: sbom-native.spdx.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      if: github.event_name != 'pull_request'
+      with:
+        name: sbom-native
+        path: sbom-native.spdx.json
