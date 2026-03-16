@@ -29,7 +29,7 @@ Images are versioned using the format: `{picoclaw-version}-whatsapp.{whatsapp-to
 
 #### Multi-Architecture (Recommended for general use)
 ```bash
-docker pull ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-multi-arch
+docker pull ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0
 ```
 
 #### Native WhatsApp Integration (Single arch, WhatsApp native support)
@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
       - name: picoclaw
-        image: ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0-multi-arch
+        image: ghcr.io/stv-io/picoclaw-whatsapp:v0.2.2-whatsapp.1.0
         ports:
         - containerPort: 18790
         env:
@@ -208,15 +208,17 @@ git push origin v0.2.2-whatsapp.1.0
 
 ## Image Tags
 
-### Multi-Architecture Images
-- `v0.2.2-whatsapp.1.0-multi-arch` - Versioned release (multi-arch)
-- `latest-multi-arch` - Latest main branch build (multi-arch)
-- `main-YYYYMMDD-HHmmss-multi-arch` - Timestamped builds from main branch (multi-arch)
+### Multi-Architecture Images (Primary)
+- `v0.2.2-whatsapp.1.0` - Versioned release (multi-arch) **PRIMARY**
+- `latest` - Latest main branch build (multi-arch) **PRIMARY**
+- `main-YYYYMMDD-HHmmss` - Timestamped builds from main branch (multi-arch)
 
-### Native WhatsApp Images
+### Native WhatsApp Images (Specialized)
 - `v0.2.2-whatsapp.1.0-native` - Versioned release (native, single arch)
 - `latest-native` - Latest main branch build (native, single arch)
 - `main-YYYYMMDD-HHmmss-native` - Timestamped builds from main branch (native, single arch)
+
+**Note**: Use the multi-arch images (without `-native` suffix) for general use. Use native images only if you need WhatsApp native integration.
 
 ## Security
 

@@ -43,12 +43,12 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=branch,suffix=-multi-arch-{{date 'YYYYMMDD-HHmmss'}}
-          type=ref,event=pr,suffix=-multi-arch
-          type=semver,pattern={{version}},suffix=-multi-arch
-          type=semver,pattern={{major}}.{{minor}},suffix=-multi-arch
-          type=semver,pattern={{major}},suffix=-multi-arch
-          type=raw,value=latest-multi-arch,enable={{is_default_branch}}
+          type=ref,event=branch,suffix=-{{date 'YYYYMMDD-HHmmss'}}
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Determine version
       id: version
@@ -75,12 +75,12 @@ jobs:
         platforms: linux/amd64,linux/arm64
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-multi-arch
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-multi-arch
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         labels: |
           maintainer=stv-io
-          org.opencontainers.image.title=PicoClaw WhatsApp Multi-Arch
-          org.opencontainers.image.description=PicoClaw AI assistant (multi-arch, no WhatsApp native)
+          org.opencontainers.image.title=PicoClaw WhatsApp
+          org.opencontainers.image.description=PicoClaw AI assistant with WhatsApp integration (multi-arch)
           org.opencontainers.image.version=${{ steps.version.outputs.version }}
           org.opencontainers.image.source=https://github.com/stv-io/picoclaw-whatsapp
         cache-from: type=gha
@@ -90,16 +90,16 @@ jobs:
       uses: anchore/sbom-action@v0
       if: github.event_name != 'pull_request'
       with:
-        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-multi-arch
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
         format: spdx-json
-        output-file: sbom-multi-arch.spdx.json
+        output-file: sbom.spdx.json
 
     - name: Upload SBOM
       uses: actions/upload-artifact@v4
       if: github.event_name != 'pull_request'
       with:
-        name: sbom-multi-arch
-        path: sbom-multi-arch.spdx.json
+        name: sbom
+        path: sbom.spdx.json
 
   build-native:
     runs-on: ubuntu-latest

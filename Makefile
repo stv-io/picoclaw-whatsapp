@@ -22,8 +22,8 @@ setup-builder: ## Setup Docker buildx builder
 	docker buildx create --name $(BUILDER) --use --bootstrap 2>/dev/null || docker buildx use $(BUILDER)
 
 build-local: ## Build for current platform only (multi-arch version)
-	docker build -t $(IMAGE_NAME):$(VERSION)-multi-arch .
-	docker tag $(IMAGE_NAME):$(VERSION)-multi-arch $(IMAGE_NAME):latest-multi-arch
+	docker build -t $(IMAGE_NAME):$(VERSION) .
+	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest
 
 build-native: ## Build with WhatsApp native support (single arch)
 	docker build -f Dockerfile.native -t $(IMAGE_NAME):$(VERSION)-native .
@@ -32,15 +32,15 @@ build-native: ## Build with WhatsApp native support (single arch)
 build-multi-arch: setup-builder ## Build for multiple architectures (amd64, arm64)
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
-		--tag $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch \
-		--tag $(REGISTRY)/$(IMAGE_NAME):latest-multi-arch \
+		--tag $(REGISTRY)/$(IMAGE_NAME):$(VERSION) \
+		--tag $(REGISTRY)/$(IMAGE_NAME):latest \
 		--push .
 
 push-multi-arch: ## Push multi-arch build to registry
-	docker tag $(IMAGE_NAME):$(VERSION)-multi-arch $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch
-	docker tag $(IMAGE_NAME):latest-multi-arch $(REGISTRY)/$(IMAGE_NAME):latest-multi-arch
-	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch
-	docker push $(REGISTRY)/$(IMAGE_NAME):latest-multi-arch
+	docker tag $(IMAGE_NAME):$(VERSION) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker tag $(IMAGE_NAME):latest $(REGISTRY)/$(IMAGE_NAME):latest
+	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker push $(REGISTRY)/$(IMAGE_NAME):latest
 
 push-native: ## Push native build to registry
 	docker tag $(IMAGE_NAME):$(VERSION)-native $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-native
@@ -49,10 +49,10 @@ push-native: ## Push native build to registry
 	docker push $(REGISTRY)/$(IMAGE_NAME):latest-native
 
 test-multi-arch: ## Test the multi-arch built image
-	docker run --rm -p 18790:18790 $(IMAGE_NAME):$(VERSION)-multi-arch &
+	docker run --rm -p 18790:18790 $(IMAGE_NAME):$(VERSION) &
 	@sleep 5
 	@curl -f http://localhost:18790/health || (echo "Health check failed" && exit 1)
-	@docker stop $$(docker ps -q --filter ancestor=$(IMAGE_NAME):$(VERSION)-multi-arch)
+	@docker stop $$(docker ps -q --filter ancestor=$(IMAGE_NAME):$(VERSION))
 
 test-native: ## Test the native built image
 	docker run --rm -p 18790:18790 $(IMAGE_NAME):$(VERSION)-native &
@@ -78,7 +78,7 @@ tag-release: ## Create and push a release tag
 
 # Development targets
 dev-build: ## Quick development build (multi-arch version)
-	docker build -t $(IMAGE_NAME):dev-multi-arch .
+	docker build -t $(IMAGE_NAME):dev .
 
 dev-build-native: ## Quick development build (native version)
 	docker build -f Dockerfile.native -t $(IMAGE_NAME):dev-native .
@@ -86,7 +86,7 @@ dev-build-native: ## Quick development build (native version)
 dev-run: ## Run development container (multi-arch version)
 	docker run -it --rm -p 18790:18790 \
 		-v $(PWD)/workspace:/root/.picoclaw/workspace \
-		$(IMAGE_NAME):dev-multi-arch
+		$(IMAGE_NAME):dev
 
 dev-run-native: ## Run development container (native version)
 	docker run -it --rm -p 18790:18790 \
@@ -97,7 +97,7 @@ dev-run-native: ## Run development container (native version)
 ci-build-multi-arch: ## CI multi-arch build (used by GitHub Actions)
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
-		--tag $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch \
+		--tag $(REGISTRY)/$(IMAGE_NAME):$(VERSION) \
 		--label "org.opencontainers.image.version=$(VERSION)" \
 		--label "org.opencontainers.image.source=https://github.com/stv-io/picoclaw-whatsapp" \
 		--cache-from type=gha \
@@ -117,13 +117,13 @@ ci-build-native: ## CI native build (used by GitHub Actions)
 
 # Security scanning
 scan-multi-arch: ## Scan multi-arch image with Trivy (requires trivy)
-	trivy image $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch
+	trivy image $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
 scan-native: ## Scan native image with Trivy (requires trivy)
 	trivy image $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-native
 
 sbom-multi-arch: ## Generate SBOM for multi-arch image
-	docker sbom $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-multi-arch
+	docker sbom $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
 sbom-native: ## Generate SBOM for native image
 	docker sbom $(REGISTRY)/$(IMAGE_NAME):$(VERSION)-native
